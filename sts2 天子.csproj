@@ -1,0 +1,32 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>TenshiHinanawi</AssemblyName>
+    <ImplicitUsings>true</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <Sts2Dir>D:\youxi\steamapps\common\Slay the Spire 2</Sts2Dir>
+    <Sts2DataDir>$(Sts2Dir)\data_sts2_windows_x86_64</Sts2DataDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(Sts2DataDir)\sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="0Harmony">
+      <HintPath>$(Sts2DataDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="Copy Mod" AfterTargets="PostBuildEvent">
+    <Message Text="全自动物流：正在将天子机甲部署到杀戮尖塔 2 引擎中..." Importance="high" />
+    <MakeDir Directories="$(Sts2Dir)\mods\TenshiHinanawi\" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(Sts2Dir)\mods\TenshiHinanawi\" />
+    <Copy SourceFiles="TenshiHinanawi.json" DestinationFolder="$(Sts2Dir)\mods\TenshiHinanawi\" />
+  </Target>
+</Project>

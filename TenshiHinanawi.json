@@ -1,0 +1,11 @@
+{
+  "id": "TenshiHinanawi",
+  "name": "天子皮肤 Mod (Tenshi Skin)",
+  "author": "xmmx",
+  "description": "将游戏原版角色替换为《东方绯想天》比那名居天子（Tenshi Hinanawi）。包含完整的像素动作序列帧与视觉特效替换，感受要石与绯想剑的暴力美学！",
+  "version": "1.0",
+  "has_pck": true,
+  "has_dll": true,
+  "dependencies": [],
+  "affects_gameplay": false
+}

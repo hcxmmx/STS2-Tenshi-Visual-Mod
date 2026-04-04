@@ -1,0 +1,12 @@
+# Godot 引擎缓存
+.godot/
+*.translation
+
+# C# 编译垃圾
+bin/
+obj/
+.vscode/
+
+# 导出的打包文件（不要把打包好的 PCK 传进源码库，太占地方）
+*.pck
+*.zip
