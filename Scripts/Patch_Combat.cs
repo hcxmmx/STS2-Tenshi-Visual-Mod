@@ -51,7 +51,9 @@ internal static class NCreature_Ready_Patch
         }
 
         GD.Print("====== 突破所有防线！强行挂载天子！ ======");
-        visuals.Body?.Hide();
+        // 极其优雅的底层节点抓取，完美规避官方测试版私有化 Body 的背刺
+        var originalBody = visuals.GetNodeOrNull<Node2D>("%Visuals");
+        originalBody?.Hide();
 
         var tenshiNode = scene.Instantiate<Node2D>();
         if (tenshiNode == null)
@@ -99,7 +101,8 @@ internal static class NCreature_Ready_Patch
         syncTimer.Autostart = true;
         tenshiNode.AddChild(syncTimer);
 
-        Node2D? bodyRef = visuals.Body;
+        // 雷达系统的目标也必须换成底层抓取！
+        Node2D? bodyRef = visuals.GetNodeOrNull<Node2D>("%Visuals");
         Node2D? tenshiRef = tenshiNode;
 
         syncTimer.Timeout += () =>

@@ -13,10 +13,12 @@ internal static class NMerchantRoom_Ready_Patch
         GD.Print("\n====== 侦测到进入商店！启动精准鸠占鹊巢协议！ ======");
         TenshiGlobals.IsInShop = true;
 
-        var players = Traverse.Create(__instance).Field("_players").GetValue<IList>();
-        if (players == null)
+        var players = Traverse.Create(__instance).Field("_players").GetValue<System.Collections.IList>();
+        var playerVisuals = Traverse.Create(__instance).Field("_playerVisuals").GetValue<System.Collections.IList>();
+
+        if (players == null || playerVisuals == null || players.Count != playerVisuals.Count)
         {
-            GD.PrintErr("💥 商店雷达中断：找不到 _players 列表！");
+            GD.PrintErr("💥 商店雷达中断：_players 或 _playerVisuals 数据异常或不匹配！");
             return;
         }
 
@@ -60,57 +62,37 @@ internal static class NMerchantRoom_Ready_Patch
             var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
             var entryName = TenshiGlobals.GetCharacterEntry(character);
 
+            // 查身份证！不是天子就极其冷酷地跳过
             if (!string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            if (i >= characterContainer.GetChildCount())
-            {
-                continue;
-            }
+            GD.Print($"🎯 精准锁定！玩家 {i} 是天子大小姐！");
 
-            var targetChild = characterContainer.GetChild(i);
-            if (targetChild is CanvasItem canvasItem)
-            {
-                canvasItem.Hide();
-            }
+            // 极其关键：直接从 _playerVisuals 里拿对应的 UI 肉体，绝对不会错位！
+            var targetChild = playerVisuals[i] as Godot.Node2D;
+            if (targetChild == null) continue;
 
-            Vector2 originalPos = Vector2.Zero;
-            if (targetChild is Control c)
-            {
-                originalPos = c.Position;
-            }
-            else if (targetChild is Node2D n)
-            {
-                originalPos = n.Position;
-            }
+            // 抹杀原版肉体
+            targetChild.Hide();
 
+            // 注入天子商店机甲
             var tenshiShopMecha = scene.Instantiate<Node2D>();
             tenshiShopMecha.Name = $"TenshiShopMecha_{i}";
             characterContainer.AddChild(tenshiShopMecha);
 
-            tenshiShopMecha.Position = originalPos + new Vector2(0, -200f);
+            // 极其精准地继承原位置
+            tenshiShopMecha.Position = targetChild.Position + new Vector2(0, -200f);
             tenshiShopMecha.Scale = new Vector2(0.7f, 0.7f);
 
             var combatSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiShopMecha);
             var shopSprite = TenshiGlobals.FindFirstNode<Sprite2D>(tenshiShopMecha, s => s.Name == "ShopSprite");
             var animPlayer = TenshiGlobals.FindFirstNode<AnimationPlayer>(tenshiShopMecha);
 
-            if (combatSprite != null)
-            {
-                combatSprite.Visible = false;
-            }
-
-            if (shopSprite != null)
-            {
-                shopSprite.Visible = true;
-            }
-
-            if (animPlayer != null)
-            {
-                animPlayer.Play("Shop_Idle");
-            }
+            if (combatSprite != null) combatSprite.Visible = false;
+            if (shopSprite != null) shopSprite.Visible = true;
+            if (animPlayer != null) animPlayer.Play("Shop_Idle");
         }
     }
 }
