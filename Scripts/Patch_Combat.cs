@@ -13,9 +13,9 @@ internal static class NCreature_Ready_Patch
     {
         TenshiGlobals.IsDead = false;
         TenshiGlobals.IsInShop = false;
-        GD.Print($"\n---> Hinana Tenshi Project: 侦测到 NCreature 试图活化！节点名称 = {__instance.Name} <---");
+        TenshiGlobals.Log($"\n---> Hinana Tenshi Project: 侦测到 NCreature 试图活化！节点名称 = {__instance.Name} <---");
 
-        var scene = TenshiGlobals.TenshiScene ?? ResourceLoader.Load<PackedScene>(TenshiGlobals.TenshiScenePath);
+        var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
         TenshiGlobals.TenshiScene = scene;
 
         if (scene == null)
@@ -26,31 +26,31 @@ internal static class NCreature_Ready_Patch
 
         if (__instance.Entity == null)
         {
-            GD.Print("拦截：Entity 为空！_Ready 阶段灵魂尚未注入！");
+            TenshiGlobals.Log("拦截：Entity 为空！_Ready 阶段灵魂尚未注入！");
             return;
         }
 
         var player = __instance.Entity.Player;
         if (player == null)
         {
-            GD.Print("拦截：这是一个怪物，不是玩家！");
+            TenshiGlobals.Log("拦截：这是一个怪物，不是玩家！");
             return;
         }
 
         if (!string.Equals(player.Character?.Id?.Entry, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
         {
-            GD.Print($"拦截：角色不匹配，当前角色是 {player.Character?.Id?.Entry}");
+            TenshiGlobals.Log($"拦截：角色不匹配，当前角色是 {player.Character?.Id?.Entry}");
             return;
         }
 
         var visuals = __instance.Visuals;
         if (visuals == null)
         {
-            GD.Print("拦截：Visuals 视觉中枢为空！");
+            TenshiGlobals.Log("拦截：Visuals 视觉中枢为空！");
             return;
         }
 
-        GD.Print("====== 突破所有防线！强行挂载天子！ ======");
+        TenshiGlobals.Log("====== 突破所有防线！强行挂载天子！ ======");
         // 极其优雅的底层节点抓取，完美规避官方测试版私有化 Body 的背刺
         var originalBody = visuals.GetNodeOrNull<Node2D>("%Visuals");
         originalBody?.Hide();
@@ -67,12 +67,12 @@ internal static class NCreature_Ready_Patch
         tenshiNode.Scale = new Vector2(3.0f, 3.0f);
         tenshiNode.Visible = true;
 
-        var tenshiSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiNode);
-        var tenshiVoice = TenshiGlobals.FindFirstNode<AudioStreamPlayer2D>(tenshiNode, n => n.Name == "TenshiVoice");
+        TenshiGlobals.RegisterMecha(tenshiNode);
+        _ = TenshiGlobals.TryGetMechaComponents(tenshiNode, out var tenshiSprite, out var tenshiVoice);
 
         if (tenshiSprite != null)
         {
-            TenshiGlobals.ActiveTenshiSprites.RemoveWhere(s => !GodotObject.IsInstanceValid(s));
+            TenshiGlobals.CleanupSpriteRegistry();
             TenshiGlobals.ActiveTenshiSprites.Add(tenshiSprite);
 
             tenshiSprite.AnimationFinished += () =>
@@ -89,9 +89,9 @@ internal static class NCreature_Ready_Patch
             if (tenshiVoice != null)
             {
                 string chosenIntroVoice = TenshiGlobals.IntroVoicePool[TenshiGlobals.Rng.Next(TenshiGlobals.IntroVoicePool.Length)];
-                tenshiVoice.Stream = ResourceLoader.Load<AudioStream>(chosenIntroVoice);
+                tenshiVoice.Stream = TenshiGlobals.GetAudioStream(chosenIntroVoice);
                 tenshiVoice.Play();
-                GD.Print($"📢 入场播报：极其傲娇地播放了 {chosenIntroVoice} !");
+                TenshiGlobals.Log($"📢 入场播报：极其傲娇地播放了 {chosenIntroVoice} !");
             }
         }
 
@@ -120,7 +120,7 @@ internal static class NCreature_Ready_Patch
             }
         };
 
-        GD.Print("天子物理矫正完毕！");
+        TenshiGlobals.Log("天子物理矫正完毕！");
     }
 }
 
@@ -136,7 +136,7 @@ internal static class NCreature_SetAnimationTrigger_Patch
 
         if (TenshiGlobals.IsDead)
         {
-            GD.Print($"🔒 拦截死后诈尸信号：{trigger} 被物理屏蔽！");
+            TenshiGlobals.Log($"🔒 拦截死后诈尸信号：{trigger} 被物理屏蔽！");
             return;
         }
 
@@ -158,15 +158,12 @@ internal static class NCreature_SetAnimationTrigger_Patch
             return;
         }
 
-        var tenshiSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiMecha);
-        var tenshiVoice = TenshiGlobals.FindFirstNode<AudioStreamPlayer2D>(tenshiMecha, n => n.Name == "TenshiVoice");
-
-        if (tenshiSprite == null)
+        if (!TenshiGlobals.TryGetMechaComponents(tenshiMecha, out var tenshiSprite, out var tenshiVoice) || tenshiSprite == null)
         {
             return;
         }
 
-        GD.Print($"---> Hinana Tenshi Project: 收到动作指令: {trigger} <---");
+        TenshiGlobals.Log($"---> Hinana Tenshi Project: 收到动作指令: {trigger} <---");
 
         switch (trigger)
         {
@@ -176,14 +173,14 @@ internal static class NCreature_SetAnimationTrigger_Patch
             {
                 string chosenAttack = TenshiGlobals.AttackPool[TenshiGlobals.Rng.Next(TenshiGlobals.AttackPool.Length)];
                 string chosenAttackVoice = TenshiGlobals.AttackVoicePool[TenshiGlobals.Rng.Next(TenshiGlobals.AttackVoicePool.Length)];
-                GD.Print($"极其华丽地抽中了: {chosenAttack} !");
+                TenshiGlobals.Log($"极其华丽地抽中了: {chosenAttack} !");
 
                 tenshiSprite.Stop();
                 tenshiSprite.Play(chosenAttack);
 
                 if (tenshiVoice != null)
                 {
-                    tenshiVoice.Stream = ResourceLoader.Load<AudioStream>(chosenAttackVoice);
+                    tenshiVoice.Stream = TenshiGlobals.GetAudioStream(chosenAttackVoice);
                     tenshiVoice.Play();
                 }
 
@@ -194,14 +191,14 @@ internal static class NCreature_SetAnimationTrigger_Patch
             {
                 string chosenHit = TenshiGlobals.HitPool[TenshiGlobals.Rng.Next(TenshiGlobals.HitPool.Length)];
                 string chosenHitVoice = TenshiGlobals.HitVoicePool[TenshiGlobals.Rng.Next(TenshiGlobals.HitVoicePool.Length)];
-                GD.Print($"极其心疼地触发了受击: {chosenHit}");
+                TenshiGlobals.Log($"极其心疼地触发了受击: {chosenHit}");
 
                 tenshiSprite.Stop();
                 tenshiSprite.Play(chosenHit);
 
                 if (tenshiVoice != null)
                 {
-                    tenshiVoice.Stream = ResourceLoader.Load<AudioStream>(chosenHitVoice);
+                    tenshiVoice.Stream = TenshiGlobals.GetAudioStream(chosenHitVoice);
                     tenshiVoice.Play();
                 }
 
@@ -212,14 +209,14 @@ internal static class NCreature_SetAnimationTrigger_Patch
             {
                 string chosenCast = TenshiGlobals.CastPool[TenshiGlobals.Rng.Next(TenshiGlobals.CastPool.Length)];
                 string chosenCastVoice = TenshiGlobals.CastVoicePool[TenshiGlobals.Rng.Next(TenshiGlobals.CastVoicePool.Length)];
-                GD.Print($"极其华丽地触发了施法: {chosenCast}");
+                TenshiGlobals.Log($"极其华丽地触发了施法: {chosenCast}");
 
                 tenshiSprite.Stop();
                 tenshiSprite.Play(chosenCast);
 
                 if (tenshiVoice != null)
                 {
-                    tenshiVoice.Stream = ResourceLoader.Load<AudioStream>(chosenCastVoice);
+                    tenshiVoice.Stream = TenshiGlobals.GetAudioStream(chosenCastVoice);
                     tenshiVoice.Play();
                 }
 
@@ -235,7 +232,10 @@ internal static class NCreature_SetAnimationTrigger_Patch
                 tenshiMecha.Position = new Vector2(0, -160f);
                 break;
             default:
-                tenshiSprite.Play("Idle");
+                if (tenshiSprite.Animation != "Idle")
+                {
+                    tenshiSprite.Play("Idle");
+                }
                 tenshiMecha.Position = new Vector2(0, -160f);
                 break;
         }
@@ -265,13 +265,12 @@ internal static class NCreature_AnimDie_Patch
             return;
         }
 
-        var tenshiSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiMecha);
-        if (tenshiSprite == null)
+        if (!TenshiGlobals.TryGetMechaComponents(tenshiMecha, out var tenshiSprite, out _) || tenshiSprite == null)
         {
             return;
         }
 
-        GD.Print("---> Hinana Tenshi Project: 侦测到死亡信号！执行安息协议！ <---");
+        TenshiGlobals.Log("---> Hinana Tenshi Project: 侦测到死亡信号！执行安息协议！ <---");
         TenshiGlobals.IsDead = true;
         tenshiSprite.Stop();
         tenshiSprite.Play("Die");
@@ -284,9 +283,9 @@ internal static class CombatManager_EndCombatInternal_Patch
 {
     private static void Prefix()
     {
-        GD.Print("\n====== 🏆 侦测到底层宣布战斗结束！通过卫星阵列呼叫全体天子！ ======");
+        TenshiGlobals.Log("\n====== 🏆 侦测到底层宣布战斗结束！通过卫星阵列呼叫全体天子！ ======");
 
-        TenshiGlobals.ActiveTenshiSprites.RemoveWhere(s => !GodotObject.IsInstanceValid(s));
+        TenshiGlobals.CleanupSpriteRegistry();
 
         if (TenshiGlobals.ActiveTenshiSprites.Count <= 0)
         {
@@ -301,19 +300,19 @@ internal static class CombatManager_EndCombatInternal_Patch
 
             var mechaNode = sprite.GetParent();
             AudioStreamPlayer2D? voiceNode = null;
-            if (mechaNode != null)
+            if (mechaNode is Node2D mechaRoot)
             {
-                voiceNode = TenshiGlobals.FindFirstNode<AudioStreamPlayer2D>(mechaNode, n => n.Name == "TenshiVoice");
+                _ = TenshiGlobals.TryGetMechaComponents(mechaRoot, out _, out voiceNode);
             }
 
             if (voiceNode != null)
             {
                 string chosenVictoryVoice = TenshiGlobals.VictoryVoicePool[TenshiGlobals.Rng.Next(TenshiGlobals.VictoryVoicePool.Length)];
-                voiceNode.Stream = ResourceLoader.Load<AudioStream>(chosenVictoryVoice);
+                voiceNode.Stream = TenshiGlobals.GetAudioStream(chosenVictoryVoice);
                 voiceNode.Play();
             }
         }
 
-        GD.Print($"🎉 全局广播成功：共 {TenshiGlobals.ActiveTenshiSprites.Count} 名天子极其傲娇地宣布了胜利！");
+        TenshiGlobals.Log($"🎉 全局广播成功：共 {TenshiGlobals.ActiveTenshiSprites.Count} 名天子极其傲娇地宣布了胜利！");
     }
 }

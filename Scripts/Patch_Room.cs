@@ -10,7 +10,7 @@ internal static class NMerchantRoom_Ready_Patch
 {
     private static void Postfix(MegaCrit.Sts2.Core.Nodes.Rooms.NMerchantRoom __instance)
     {
-        GD.Print("\n====== 侦测到进入商店！启动精准鸠占鹊巢协议！ ======");
+        TenshiGlobals.Log("\n====== 侦测到进入商店！启动精准鸠占鹊巢协议！ ======");
         TenshiGlobals.IsInShop = true;
 
         var players = Traverse.Create(__instance).Field("_players").GetValue<System.Collections.IList>();
@@ -32,14 +32,14 @@ internal static class NMerchantRoom_Ready_Patch
             if (string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
             {
                 hasTenshi = true;
-                GD.Print("🎯 商店 DNA 匹配成功！发现天子大小姐！");
+                TenshiGlobals.Log("🎯 商店 DNA 匹配成功！发现天子大小姐！");
                 break;
             }
         }
 
         if (!hasTenshi)
         {
-            GD.Print("拦截：队伍里没有天子，保留原版队伍！");
+            TenshiGlobals.Log("拦截：队伍里没有天子，保留原版队伍！");
             return;
         }
 
@@ -49,7 +49,7 @@ internal static class NMerchantRoom_Ready_Patch
             return;
         }
 
-        var scene = TenshiGlobals.TenshiScene ?? ResourceLoader.Load<PackedScene>(TenshiGlobals.TenshiScenePath);
+        var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
         TenshiGlobals.TenshiScene = scene;
         if (scene == null)
         {
@@ -68,7 +68,7 @@ internal static class NMerchantRoom_Ready_Patch
                 continue;
             }
 
-            GD.Print($"🎯 精准锁定！玩家 {i} 是天子大小姐！");
+            TenshiGlobals.Log($"🎯 精准锁定！玩家 {i} 是天子大小姐！");
 
             // 极其关键：直接从 _playerVisuals 里拿对应的 UI 肉体，绝对不会错位！
             var targetChild = playerVisuals[i] as Godot.Node2D;
@@ -102,7 +102,7 @@ internal static class NMerchantRoom_HideScreen_Patch
 {
     private static void Prefix()
     {
-        GD.Print("\n====== 侦测到离开商店！摘除物理锁！ ======");
+        TenshiGlobals.Log("\n====== 侦测到离开商店！摘除物理锁！ ======");
         TenshiGlobals.IsInShop = false;
     }
 }
@@ -112,7 +112,7 @@ internal static class NRestSiteRoom_Ready_Patch
 {
     private static void Postfix(MegaCrit.Sts2.Core.Nodes.Rooms.NRestSiteRoom __instance)
     {
-        GD.Print("\n====== 📡 篝火雷达：侦测到进入篝火！启动协议！ ======");
+        TenshiGlobals.Log("\n====== 📡 篝火雷达：侦测到进入篝火！启动协议！ ======");
         TenshiGlobals.IsInShop = true;
 
         var runState = Traverse.Create(__instance).Field("_runState").GetValue();
@@ -130,7 +130,7 @@ internal static class NRestSiteRoom_Ready_Patch
             return;
         }
 
-        var scene = TenshiGlobals.TenshiScene ?? ResourceLoader.Load<PackedScene>(TenshiGlobals.TenshiScenePath);
+        var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
         TenshiGlobals.TenshiScene = scene;
         if (scene == null)
         {
@@ -144,7 +144,7 @@ internal static class NRestSiteRoom_Ready_Patch
             var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
             var entryName = TenshiGlobals.GetCharacterEntry(character);
 
-            GD.Print($"🔍 扫描玩家 {i} 的 DNA (Entry): {entryName ?? "NULL"}");
+            TenshiGlobals.Log($"🔍 扫描玩家 {i} 的 DNA (Entry): {entryName ?? "NULL"}");
             if (!string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -159,12 +159,15 @@ internal static class NRestSiteRoom_Ready_Patch
             }
 
             for (int j = 0; j < container.GetChildCount(); j++)
-            {
-                if (container.GetChild(j) is CanvasItem canvasItem)
-                {
-                    canvasItem.Hide();
-                }
-            }
+{
+    if (container.GetChild(j) is CanvasItem canvasItem)
+    {
+        // 🚨 启动光学迷彩协议！
+        // 绝对不要用 canvasItem.Hide();！
+        // 直接把颜色的 Alpha 通道（透明度）降到 0！
+        canvasItem.Modulate = new Color(1f, 1f, 1f, 0f);
+    }
+}
 
             var tenshiCampMecha = scene.Instantiate<Node2D>();
             tenshiCampMecha.Name = $"TenshiCampMecha_{i}";
@@ -215,7 +218,7 @@ internal static class NRestSiteRoom_Exit_Patch
 {
     private static void Prefix()
     {
-        GD.Print("\n====== 侦测到玩家点击前进！极其优雅地摘除篝火物理锁！ ======");
+        TenshiGlobals.Log("\n====== 侦测到玩家点击前进！极其优雅地摘除篝火物理锁！ ======");
         TenshiGlobals.IsInShop = false;
     }
 }

@@ -31,7 +31,7 @@ internal static class NCharacterSelectScreen_SelectCharacter_Patch
             return;
         }
 
-        GD.Print("\n====== 🎯 选人界面雷达：侦测到天子大小姐登场！启动视觉劫持！ ======");
+        TenshiGlobals.Log("\n====== 🎯 选人界面雷达：侦测到天子大小姐登场！启动视觉劫持！ ======");
 
         var bgContainer = Traverse.Create(__instance).Field("_bgContainer").GetValue<Control>();
         var nameLabel = Traverse.Create(__instance).Field("_name").GetValue();
@@ -47,13 +47,13 @@ internal static class NCharacterSelectScreen_SelectCharacter_Patch
                 }
             }
 
-            var tenshiScreenScene = ResourceLoader.Load<PackedScene>("res://mods/TenshiHinanawi/visuals/TenshiSelectScreen.tscn");
+            var tenshiScreenScene = TenshiGlobals.GetPackedScene("res://mods/TenshiHinanawi/visuals/TenshiSelectScreen.tscn");
             if (tenshiScreenScene != null)
             {
                 var tenshiScreen = tenshiScreenScene.Instantiate<Control>();
                 tenshiScreen.SetAnchorsPreset(Control.LayoutPreset.FullRect);
                 bgContainer.AddChild(tenshiScreen);
-                GD.Print("✅ 蔚蓝有顶天背景铺设完毕！");
+                TenshiGlobals.Log("✅ 蔚蓝有顶天背景铺设完毕！");
             }
         }
 
@@ -74,7 +74,7 @@ internal static class NCharacterSelectScreen_SelectCharacter_Patch
             try { Traverse.Create(characterModel).Field("<CharacterSelectSfx>k__BackingField").SetValue(__state); } catch { }
         }
 
-        GD.Print("🎉 UI 篡改与防崩溃战术静音协议极其完美地执行完毕！");
+        TenshiGlobals.Log("🎉 UI 篡改与防崩溃战术静音协议极其完美地执行完毕！");
     }
 }
 
@@ -89,9 +89,9 @@ internal static class NCharacterSelectButton_Init_Patch
             return;
         }
 
-        GD.Print("\n====== 🎯 头像雷达：锁定天子选人按钮！启动物理换脸！ ======");
+        TenshiGlobals.Log("\n====== 🎯 头像雷达：锁定天子选人按钮！启动物理换脸！ ======");
 
-        var customAvatar = ResourceLoader.Load<Texture2D>("res://mods/TenshiHinanawi/visuals/Tenshi_Avatar.png");
+        var customAvatar = TenshiGlobals.GetTexture("res://mods/TenshiHinanawi/visuals/Tenshi_Avatar.png");
         if (customAvatar == null)
         {
             GD.PrintErr("💥 找不到天子的头像图片！长官检查一下路径和文件名喵？");
@@ -105,6 +105,6 @@ internal static class NCharacterSelectButton_Init_Patch
         }
 
         Traverse.Create(iconNode).Property("Texture").SetValue(customAvatar);
-        GD.Print("✅ 天子头像极其完美地贴上去了！");
+        TenshiGlobals.Log("✅ 天子头像极其完美地贴上去了！");
     }
 }

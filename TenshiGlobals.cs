@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 
 namespace TenshiMod.Scripts; // 保持和你原来的命名空间一致
@@ -13,7 +14,10 @@ public static class TenshiGlobals
     public static bool IsDead = false;
     
     // 联机卫星阵列：记录所有在场的天子
-    public static System.Collections.Generic.HashSet<AnimatedSprite2D> ActiveTenshiSprites = new();
+    public static HashSet<AnimatedSprite2D> ActiveTenshiSprites = new();
+
+    // 默认关闭高频日志，避免热路径频繁字符串拼接和输出。
+    public static bool EnableVerboseLog = false;
 
     // ==========================================
     // 2. 核心系统常量
@@ -29,6 +33,11 @@ public static class TenshiGlobals
 
     // 全局场景缓存：由 Entry.Init 预加载，Patch 中可直接复用。
     public static PackedScene? TenshiScene;
+
+    private static readonly Dictionary<string, AudioStream> AudioStreamCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, PackedScene> PackedSceneCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, Texture2D> TextureCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<Node2D, MechaComponents> MechaComponentsCache = new();
 
     // ==========================================
     // 4. 动作动画池
@@ -64,6 +73,125 @@ public static class TenshiGlobals
         "res://mods/TenshiHinanawi/audio/Vo_spell_a_tenshi.wav", 
         "res://mods/TenshiHinanawi/audio/Vo_hightension_tenshi.wav" 
     };
+
+    private sealed class MechaComponents
+    {
+        public required AnimatedSprite2D Sprite { get; init; }
+        public AudioStreamPlayer2D? Voice { get; init; }
+    }
+
+    public static void Log(string message)
+    {
+        if (EnableVerboseLog)
+        {
+            GD.Print(message);
+        }
+    }
+
+    public static AudioStream? GetAudioStream(string path)
+    {
+        if (AudioStreamCache.TryGetValue(path, out var cached))
+        {
+            return cached;
+        }
+
+        var loaded = ResourceLoader.Load<AudioStream>(path);
+        if (loaded != null)
+        {
+            AudioStreamCache[path] = loaded;
+        }
+
+        return loaded;
+    }
+
+    public static PackedScene? GetPackedScene(string path)
+    {
+        if (PackedSceneCache.TryGetValue(path, out var cached))
+        {
+            return cached;
+        }
+
+        var loaded = ResourceLoader.Load<PackedScene>(path);
+        if (loaded != null)
+        {
+            PackedSceneCache[path] = loaded;
+        }
+
+        return loaded;
+    }
+
+    public static Texture2D? GetTexture(string path)
+    {
+        if (TextureCache.TryGetValue(path, out var cached))
+        {
+            return cached;
+        }
+
+        var loaded = ResourceLoader.Load<Texture2D>(path);
+        if (loaded != null)
+        {
+            TextureCache[path] = loaded;
+        }
+
+        return loaded;
+    }
+
+    public static void RegisterMecha(Node2D mechaRoot)
+    {
+        if (!GodotObject.IsInstanceValid(mechaRoot))
+        {
+            return;
+        }
+
+        var sprite = FindFirstNode<AnimatedSprite2D>(mechaRoot);
+        if (sprite == null)
+        {
+            return;
+        }
+
+        var voice = FindFirstNode<AudioStreamPlayer2D>(mechaRoot, n => n.Name == "TenshiVoice");
+        MechaComponentsCache[mechaRoot] = new MechaComponents
+        {
+            Sprite = sprite,
+            Voice = voice,
+        };
+    }
+
+    public static bool TryGetMechaComponents(Node2D mechaRoot, out AnimatedSprite2D? sprite, out AudioStreamPlayer2D? voice)
+    {
+        sprite = null;
+        voice = null;
+
+        if (!GodotObject.IsInstanceValid(mechaRoot))
+        {
+            return false;
+        }
+
+        if (MechaComponentsCache.TryGetValue(mechaRoot, out var cached)
+            && GodotObject.IsInstanceValid(cached.Sprite)
+            && (cached.Voice == null || GodotObject.IsInstanceValid(cached.Voice)))
+        {
+            sprite = cached.Sprite;
+            voice = cached.Voice;
+            return true;
+        }
+
+        RegisterMecha(mechaRoot);
+        if (MechaComponentsCache.TryGetValue(mechaRoot, out cached) && GodotObject.IsInstanceValid(cached.Sprite))
+        {
+            sprite = cached.Sprite;
+            voice = cached.Voice;
+            return true;
+        }
+
+        MechaComponentsCache.Remove(mechaRoot);
+        return false;
+    }
+
+    public static void CleanupSpriteRegistry()
+    {
+        ActiveTenshiSprites.RemoveWhere(s => !GodotObject.IsInstanceValid(s));
+    }
 
     public static T? FindFirstNode<T>(Node root, Func<T, bool>? predicate = null) where T : Node
     {
