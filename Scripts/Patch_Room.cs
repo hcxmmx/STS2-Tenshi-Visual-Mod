@@ -222,3 +222,105 @@ internal static class NRestSiteRoom_Exit_Patch
         TenshiGlobals.IsInShop = false;
     }
 }
+
+[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant), nameof(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant._Ready))]
+internal static class NFakeMerchant_Ready_Patch
+{
+    private static void Postfix(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant __instance)
+    {
+        TenshiGlobals.Log("\n====== 侦测到进入商店！启动精准鸠占鹊巢协议！ ======");
+        TenshiGlobals.IsInShop = true;
+
+        var players = Traverse.Create(__instance).Field("_players").GetValue<System.Collections.IList>();
+        var playerVisuals = Traverse.Create(__instance).Field("_playerVisuals").GetValue<System.Collections.IList>();
+
+        if (players == null || playerVisuals == null || players.Count != playerVisuals.Count)
+        {
+            GD.PrintErr("💥 商店雷达中断：_players 或 _playerVisuals 数据异常或不匹配！");
+            return;
+        }
+
+        bool hasTenshi = false;
+        for (int i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
+            var entryName = TenshiGlobals.GetCharacterEntry(character);
+
+            if (string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
+            {
+                hasTenshi = true;
+                TenshiGlobals.Log("🎯 商店 DNA 匹配成功！发现天子大小姐！");
+                break;
+            }
+        }
+
+        if (!hasTenshi)
+        {
+            TenshiGlobals.Log("拦截：队伍里没有天子，保留原版队伍！");
+            return;
+        }
+
+        var characterContainer = __instance.GetNodeOrNull<Control>("%CharacterContainer");
+        if (characterContainer == null)
+        {
+            return;
+        }
+
+        var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
+        TenshiGlobals.TenshiScene = scene;
+        if (scene == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
+            var entryName = TenshiGlobals.GetCharacterEntry(character);
+
+            // 查身份证！不是天子就极其冷酷地跳过
+            if (!string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            TenshiGlobals.Log($"🎯 精准锁定！玩家 {i} 是天子大小姐！");
+
+            // 极其关键：直接从 _playerVisuals 里拿对应的 UI 肉体，绝对不会错位！
+            var targetChild = playerVisuals[i] as Godot.Node2D;
+            if (targetChild == null) continue;
+
+            // 抹杀原版肉体
+            targetChild.Hide();
+
+            // 注入天子商店机甲
+            var tenshiShopMecha = scene.Instantiate<Node2D>();
+            tenshiShopMecha.Name = $"TenshiShopMecha_{i}";
+            characterContainer.AddChild(tenshiShopMecha);
+
+            // 极其精准地继承原位置
+            tenshiShopMecha.Position = targetChild.Position + new Vector2(0, -200f);
+            tenshiShopMecha.Scale = new Vector2(0.7f, 0.7f);
+
+            var combatSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiShopMecha);
+            var shopSprite = TenshiGlobals.FindFirstNode<Sprite2D>(tenshiShopMecha, s => s.Name == "ShopSprite");
+            var animPlayer = TenshiGlobals.FindFirstNode<AnimationPlayer>(tenshiShopMecha);
+
+            if (combatSprite != null) combatSprite.Visible = false;
+            if (shopSprite != null) shopSprite.Visible = true;
+            if (animPlayer != null) animPlayer.Play("Shop_Idle");
+        }
+    }
+}
+
+[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant), "HideScreen")]
+internal static class NFakeMerchant_HideScreen_Patch
+{
+    private static void Prefix()
+    {
+        TenshiGlobals.Log("\n====== 侦测到离开商店！摘除物理锁！ ======");
+        TenshiGlobals.IsInShop = false;
+    }
+}
