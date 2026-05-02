@@ -49,6 +49,19 @@ internal static class NMerchantRoom_Ready_Patch
             return;
         }
 
+        var theEvent = Traverse.Create(__instance).Field("_event").GetValue();
+        if (theEvent != null)
+        {
+            // 利用极其霸道的反射强行读取 StartedFight 状态
+            bool isFighting = Traverse.Create(theEvent).Property("StartedFight").GetValue<bool>() || Traverse.Create(theEvent).Field("StartedFight").GetValue<bool>();
+            
+            if (isFighting)
+            {
+                GD.Print("🚨 战术拦截！假商人图穷匕见，已进入战斗状态，放弃注入商店机甲，将舞台交还给战斗核心！");
+                return; // 极其冷酷地撤退，不执行后续的换皮逻辑
+            }
+        }
+
         var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
         TenshiGlobals.TenshiScene = scene;
         if (scene == null)
