@@ -108,3 +108,172 @@ internal static class NCharacterSelectButton_Init_Patch
         TenshiGlobals.Log("✅ 天子头像极其完美地贴上去了！");
     }
 }
+
+// ==========================================
+// 🌐 多人读档界面 (主机端)：替换背景大立绘
+// ==========================================
+[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NMultiplayerLoadGameScreen), "InitializeAsHost")]
+internal static class NMultiplayerLoadGameScreen_InitializeAsHost_Patch
+{
+    private static void Postfix(Godot.Node __instance, object run)
+    {
+        TenshiGlobals.Log("\n====== 🌐 多人读档雷达 (Host)：侦测到界面加载！ ======");
+
+        var bgContainer = __instance.GetNodeOrNull<Godot.Control>("%BgContainer") 
+                       ?? __instance.GetNodeOrNull<Godot.Control>("BgContainer")
+                       ?? __instance.GetNodeOrNull<Godot.Control>("%Bg");
+        
+        var targetContainer = bgContainer ?? (__instance as Godot.Control);
+
+        string charId = "";
+        try {
+            var playersList = Traverse.Create(run).Property("Players").GetValue<System.Collections.IList>() 
+                           ?? Traverse.Create(run).Field("Players").GetValue<System.Collections.IList>();
+            
+            if (playersList != null && playersList.Count > 0)
+            {
+                var hostPlayer = playersList[0]; 
+                var modelIdObj = Traverse.Create(hostPlayer).Property("CharacterId").GetValue() 
+                              ?? Traverse.Create(hostPlayer).Field("CharacterId").GetValue();
+                
+                if (modelIdObj != null) charId = modelIdObj.ToString() ?? ""; 
+            }
+        } catch (Exception ex) { 
+            TenshiGlobals.Log($"[Error] Host提取角色ID异常: {ex.Message}");
+        }
+        TenshiGlobals.Log($"Host 最终提取的 ID: '{charId}'");
+
+        if (string.IsNullOrEmpty(charId) || (!charId.Contains("Ironclad", StringComparison.OrdinalIgnoreCase) && !charId.Contains(TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (targetContainer != null)
+        {
+            if (bgContainer != null)
+            {
+                foreach (Godot.Node child in bgContainer.GetChildren())
+                {
+                    if (child is Godot.CanvasItem canvasItem) canvasItem.Hide();
+                }
+            }
+            else
+            {
+                var staticBg = targetContainer.GetNodeOrNull<Godot.CanvasItem>("StaticBg");
+                if (staticBg != null) staticBg.Hide();
+
+                var animatedBg = targetContainer.GetNodeOrNull<Godot.CanvasItem>("AnimatedBg");
+                if (animatedBg != null) animatedBg.Hide();
+            }
+
+            var existingScreen = targetContainer.GetNodeOrNull<Godot.Control>("Tenshi_SelectBg");
+            if (existingScreen != null)
+            {
+                existingScreen.Show();
+            }
+            else
+            {
+                var tenshiScreenScene = TenshiGlobals.GetPackedScene("res://mods/TenshiHinanawi/visuals/TenshiSelectScreen.tscn");
+                if (tenshiScreenScene != null)
+                {
+                    var tenshiScreen = tenshiScreenScene.Instantiate<Godot.Control>();
+                    tenshiScreen.Name = "Tenshi_SelectBg";
+                    tenshiScreen.SetAnchorsPreset(Godot.Control.LayoutPreset.FullRect);
+                    targetContainer.AddChild(tenshiScreen);
+                    
+                    if (bgContainer == null) 
+                    {
+                        targetContainer.MoveChild(tenshiScreen, 0);
+                    }
+                }
+            }
+            TenshiGlobals.Log($"✅ 成功在 {targetContainer.Name} 上铺设了天子大小姐的背景！");
+        }
+    }
+}
+
+// ==========================================
+// 🌐 多人读档界面 (客机端)：替换背景大立绘
+// ==========================================
+[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NMultiplayerLoadGameScreen), "InitializeAsClient")]
+internal static class NMultiplayerLoadGameScreen_InitializeAsClient_Patch
+{
+    private static void Postfix(Godot.Node __instance, object message)
+    {
+        TenshiGlobals.Log("\n====== 🌐 多人读档雷达 (Client)：侦测到界面加载！ ======");
+
+        var bgContainer = __instance.GetNodeOrNull<Godot.Control>("%BgContainer") 
+                       ?? __instance.GetNodeOrNull<Godot.Control>("BgContainer")
+                       ?? __instance.GetNodeOrNull<Godot.Control>("%Bg");
+        var targetContainer = bgContainer ?? (__instance as Godot.Control);
+
+        string charId = "";
+        try {
+            var runObj = Traverse.Create(message).Property("Run").GetValue() ?? Traverse.Create(message).Field("Run").GetValue();
+            if (runObj != null)
+            {
+                var playersList = Traverse.Create(runObj).Property("Players").GetValue<System.Collections.IList>() 
+                               ?? Traverse.Create(runObj).Field("Players").GetValue<System.Collections.IList>();
+                
+                if (playersList != null && playersList.Count > 0)
+                {
+                    var targetPlayer = playersList[0];
+                    var modelIdObj = Traverse.Create(targetPlayer).Property("CharacterId").GetValue() 
+                                  ?? Traverse.Create(targetPlayer).Field("CharacterId").GetValue();
+                    
+                    if (modelIdObj != null) charId = modelIdObj.ToString() ?? "";
+                }
+            }
+        } catch (Exception ex) { 
+            TenshiGlobals.Log($"[Error] Client提取角色ID异常: {ex.Message}");
+        }
+        TenshiGlobals.Log($"Client 最终提取的 ID: '{charId}'");
+
+        if (string.IsNullOrEmpty(charId) || (!charId.Contains("Ironclad", StringComparison.OrdinalIgnoreCase) && !charId.Contains(TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (targetContainer != null)
+        {
+            if (bgContainer != null)
+            {
+                foreach (Godot.Node child in bgContainer.GetChildren())
+                {
+                    if (child is Godot.CanvasItem canvasItem) canvasItem.Hide();
+                }
+            }
+            else
+            {
+                var staticBg = targetContainer.GetNodeOrNull<Godot.CanvasItem>("StaticBg");
+                if (staticBg != null) staticBg.Hide();
+
+                var animatedBg = targetContainer.GetNodeOrNull<Godot.CanvasItem>("AnimatedBg");
+                if (animatedBg != null) animatedBg.Hide();
+            }
+
+            var existingScreen = targetContainer.GetNodeOrNull<Godot.Control>("Tenshi_SelectBg");
+            if (existingScreen != null)
+            {
+                existingScreen.Show();
+            }
+            else
+            {
+                var tenshiScreenScene = TenshiGlobals.GetPackedScene("res://mods/TenshiHinanawi/visuals/TenshiSelectScreen.tscn");
+                if (tenshiScreenScene != null)
+                {
+                    var tenshiScreen = tenshiScreenScene.Instantiate<Godot.Control>();
+                    tenshiScreen.Name = "Tenshi_SelectBg";
+                    tenshiScreen.SetAnchorsPreset(Godot.Control.LayoutPreset.FullRect);
+                    targetContainer.AddChild(tenshiScreen);
+                    
+                    if (bgContainer == null) 
+                    {
+                        targetContainer.MoveChild(tenshiScreen, 0);
+                    }
+                }
+            }
+            TenshiGlobals.Log($"✅ 成功在 {targetContainer.Name} 上铺设了天子大小姐的背景！");
+        }
+    }
+}

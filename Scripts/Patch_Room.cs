@@ -241,90 +241,49 @@ internal static class NFakeMerchant_Ready_Patch
 {
     private static void Postfix(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant __instance)
     {
-        TenshiGlobals.Log("\n====== 侦测到进入商店！启动精准鸠占鹊巢协议！ ======");
-        TenshiGlobals.IsInShop = true;
+        TenshiGlobals.Log("\n====== 🎭 侦测到进入假商人房间！天子大小姐准备替换！ ======");
+        TenshiGlobals.IsInShop = true; 
 
-        var players = Traverse.Create(__instance).Field("_players").GetValue<System.Collections.IList>();
-        var playerVisuals = Traverse.Create(__instance).Field("_playerVisuals").GetValue<System.Collections.IList>();
-
-        if (players == null || playerVisuals == null || players.Count != playerVisuals.Count)
-        {
-            GD.PrintErr("💥 商店雷达中断：_players 或 _playerVisuals 数据异常或不匹配！");
-            return;
-        }
-
-        bool hasTenshi = false;
-        for (int i = 0; i < players.Count; i++)
-        {
-            var player = players[i];
-            var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
-            var entryName = TenshiGlobals.GetCharacterEntry(character);
-
-            if (string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
-            {
-                hasTenshi = true;
-                TenshiGlobals.Log("🎯 商店 DNA 匹配成功！发现天子大小姐！");
-                break;
-            }
-        }
-
-        if (!hasTenshi)
-        {
-            TenshiGlobals.Log("拦截：队伍里没有天子，保留原版队伍！");
-            return;
-        }
-
+        // 1. 极其精准地定位到容器
         var characterContainer = __instance.GetNodeOrNull<Control>("%CharacterContainer");
-        if (characterContainer == null)
+        if (characterContainer == null) return;
+
+        // 2. 极其暴力地直接抓取原模型 (直接找叫 Ironclad 的节点)
+        var originalVisual = characterContainer.GetNodeOrNull<Node2D>("Ironclad");
+        if (originalVisual == null)
         {
+            TenshiGlobals.Log("队伍里不是铁甲战士，保留原版队伍！");
             return;
         }
 
-        var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
-        TenshiGlobals.TenshiScene = scene;
-        if (scene == null)
+        // 3. 极其无情地隐藏原模型
+        originalVisual.Hide();
+
+        // 4. 极其熟练地召唤咱们的天子大小姐
+        var tenshiShopMecha = characterContainer.GetNodeOrNull<Node2D>("TenshiShopMecha_Fake");
+        if (tenshiShopMecha == null)
         {
-            return;
-        }
-
-        for (int i = 0; i < players.Count; i++)
-        {
-            var player = players[i];
-            var character = Traverse.Create(player).Property("Character").GetValue() ?? Traverse.Create(player).Field("Character").GetValue();
-            var entryName = TenshiGlobals.GetCharacterEntry(character);
-
-            // 查身份证！不是天子就极其冷酷地跳过
-            if (!string.Equals(entryName, TenshiGlobals.TargetCharacterId, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            TenshiGlobals.Log($"🎯 精准锁定！玩家 {i} 是天子大小姐！");
-
-            // 极其关键：直接从 _playerVisuals 里拿对应的 UI 肉体，绝对不会错位！
-            var targetChild = playerVisuals[i] as Godot.Node2D;
-            if (targetChild == null) continue;
-
-            // 抹杀原版肉体
-            targetChild.Hide();
-
-            // 注入天子商店机甲
-            var tenshiShopMecha = scene.Instantiate<Node2D>();
-            tenshiShopMecha.Name = $"TenshiShopMecha_{i}";
+            var scene = TenshiGlobals.TenshiScene ?? TenshiGlobals.GetPackedScene(TenshiGlobals.TenshiScenePath);
+            TenshiGlobals.TenshiScene = scene;
+            if (scene == null) return;
+            tenshiShopMecha = scene.Instantiate<Node2D>();
+            tenshiShopMecha.Name = "TenshiShopMecha_Fake";
             characterContainer.AddChild(tenshiShopMecha);
-
-            // 极其精准地继承原位置
-            tenshiShopMecha.Position = targetChild.Position + new Vector2(0, -200f);
-            tenshiShopMecha.Scale = new Vector2(0.7f, 0.7f);
-
-            var combatSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiShopMecha);
-            var shopSprite = TenshiGlobals.FindFirstNode<Sprite2D>(tenshiShopMecha, s => s.Name == "ShopSprite");
-            var animPlayer = TenshiGlobals.FindFirstNode<AnimationPlayer>(tenshiShopMecha);
-
-            if (combatSprite != null) combatSprite.Visible = false;
-            if (shopSprite != null) shopSprite.Visible = true;
-            if (animPlayer != null) animPlayer.Play("Shop_Idle");
         }
+
+        // 5. 对齐位置，放大，并播放动作
+        tenshiShopMecha.Position = originalVisual.Position + new Vector2(0, -200f);
+        tenshiShopMecha.Scale = new Vector2(0.7f, 0.7f);
+
+        var combatSprite = TenshiGlobals.FindFirstNode<AnimatedSprite2D>(tenshiShopMecha);
+        var shopSprite = TenshiGlobals.FindFirstNode<Sprite2D>(tenshiShopMecha, s => s.Name == "ShopSprite");
+        var animPlayer = TenshiGlobals.FindFirstNode<AnimationPlayer>(tenshiShopMecha);
+
+        if (combatSprite != null) combatSprite.Visible = false;
+        if (shopSprite != null) shopSprite.Visible = true;
+        if (animPlayer != null) animPlayer.Play("Shop_Idle");
+        
+        TenshiGlobals.Log("✅ 极其完美！假商人房间天子大小姐替换成功！");
     }
 }
 
@@ -333,7 +292,38 @@ internal static class NFakeMerchant_HideScreen_Patch
 {
     private static void Prefix()
     {
-        TenshiGlobals.Log("\n====== 侦测到离开商店！摘除物理锁！ ======");
+        TenshiGlobals.Log("\n====== 侦测到离开假商人商店！摘除物理锁！ ======");
         TenshiGlobals.IsInShop = false;
+    }
+}
+
+[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant), "_ExitTree")]
+internal static class NFakeMerchant_ExitTree_Patch
+{
+    private static void Prefix(MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant __instance)
+    {
+        var playerVisuals = Traverse.Create(__instance).Field("_playerVisuals").GetValue<System.Collections.IList>();
+        if (playerVisuals != null)
+        {
+            foreach (var child in playerVisuals)
+            {
+                if (child is CanvasItem canvasItem) canvasItem.Show();
+            }
+        }
+
+        var characterContainer = __instance.GetNodeOrNull<Control>("%CharacterContainer");
+        if (characterContainer != null)
+        {
+            var originalVisual = characterContainer.GetNodeOrNull<Node2D>("Ironclad");
+            if (originalVisual != null) originalVisual.Show();
+
+            foreach (Node child in characterContainer.GetChildren())
+            {
+                if (child.Name.ToString().StartsWith("TenshiShopMecha_Fake", StringComparison.Ordinal))
+                {
+                    child.QueueFree();
+                }
+            }
+        }
     }
 }
